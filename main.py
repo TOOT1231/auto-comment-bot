@@ -41,9 +41,9 @@ def send_comment_loop():
         time.sleep(delay)
 
 # تشغيل الثريد عند تشغيل السيرفر
-@app.before_first_request
-def start_loop():
+if __name__ == "__main__":
     threading.Thread(target=send_comment_loop, daemon=True).start()
+    app.run(host='0.0.0.0', port=10000)
 
 # عنوان واجهة بسيطة
 @app.route('/')
