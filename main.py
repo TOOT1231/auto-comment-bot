@@ -1,10 +1,10 @@
 import requests, base64, json, time, os
 
-email = os.getenv("EMAIL")
-password = os.getenv("PASSWORD")
-comment_text = os.getenv("COMMENT_TEXT", "Auto comment")
+email = os.getenv("123456789xdf3@gmail.com")
+password = os.getenv("Gehrman3mk")
+comment_text = os.getenv("Test2", "Auto comment")
 anime_id = os.getenv("ANIME_ID", "532")
-interval = 60 / float(os.getenv("CPM", "1"))
+interval = 60 / float(os.getenv("CPM", "60"))
 
 headers = {
     "User-Agent": "...",
