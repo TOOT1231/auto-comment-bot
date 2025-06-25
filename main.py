@@ -9,7 +9,7 @@ app = Flask(__name__)
 email = "123456789xdf3@gmail.com"
 password = "Gehrman3mk"
 comment_text = "صلوا على النبي"
-anime_id = "253"
+anime_id = "532"
 delay = 60 / 120  # كل دقيقة
 
 headers = {
