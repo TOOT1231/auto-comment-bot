@@ -8,7 +8,7 @@ app = Flask(__name__)
 # ====== الإعدادات ======
 email = "123456789xdf3@gmail.com"
 password = "Gehrman3mk"
-comment_text = "انمي معطوب."
+comment_text = "TTT."
 comment_per_minute = 10000  # كلما زادت القيمة زادت السرعة (مثال: 60 = كل ثانية، 120 = كل نصف ثانية)
 max_parallel_comments = 10000  # التعليقات المتوازية في نفس اللحظة
 delay = 60 / comment_per_minute  # لا تعدل هذا المتغير مباشرة
