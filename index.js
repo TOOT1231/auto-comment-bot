@@ -1,12 +1,14 @@
 const axios = require("axios");
 const https = require("https");
+const express = require("express");
+const app = express();
 
 const email = "123456789xdf3@gmail.com";
 const password = "Gehrman3mk";
 const commentText = "Test-3";
-const commentsPerMinute = 60;
+const commentsPerMinute = 60; // تعليق كل ثانية
 
-// قائمة الأنميات: فقط 532 مفعّل، والباقي غير مفعّل
+// ✅ غيّر هذه القيم لتفعيل/تعطيل الإرسال
 const animeTargets = {
   532: true,
   11708: false,
@@ -41,7 +43,7 @@ const animeTargets = {
 };
 
 const headers = {
-  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_8_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 (SevenZero)",
+  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_8_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
   "Content-Type": "application/x-www-form-urlencoded",
   "Origin": "https://ios.sanime.net",
   "Referer": "https://ios.sanime.net/",
@@ -51,6 +53,7 @@ const headers = {
   "Accept-Language": "ar"
 };
 
+// تحسين الاتصال
 const agent = new https.Agent({ keepAlive: true });
 
 function sendComment(animeId) {
@@ -76,7 +79,7 @@ function sendComment(animeId) {
 function startCommenting() {
   const activeAnimeIds = Object.keys(animeTargets).filter(id => animeTargets[id]);
 
-  console.log("🚀 بدأ الإرسال المستمر...");
+  console.log("🚀 بدأ الإرسال إلى الأنميات:", activeAnimeIds);
 
   let counter = 0;
 
@@ -93,3 +96,14 @@ function startCommenting() {
 }
 
 startCommenting();
+
+
+// 🟢 Express وهمي لـ Render
+app.get("/", (req, res) => {
+  res.send("🤖 Bot is running...");
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`🌐 Web server running on port ${PORT}`);
+});
