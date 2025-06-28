@@ -10,7 +10,7 @@ const password = "Gehrman3mk";
 const commentText = "N...";
 
 // ✳️ عدد التعليقات لكل أنمي قبل الانتقال للثاني
-const maxCommentsPerAnime = 60;
+const maxCommentsPerAnime = 120;
 
 // ✅ عدد التعليقات في الدقيقة
 const commentsPerMinute = 60;
