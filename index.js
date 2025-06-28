@@ -20,7 +20,7 @@ const delay = (60 / commentsPerMinute) * 1000;
 const parallelAnimeCount = 4;
 
 const animeTargets = {
-  532: true,
+  532: false,
   11708: true,
   11547: true,
   11707: true,
