@@ -1,49 +1,59 @@
+
 const axios = require("axios");
 const https = require("https");
 const express = require("express");
+const fetch = require("node-fetch");
 const app = express();
 
 const email = "123456789xdf3@gmail.com";
 const password = "Gehrman3mk";
-const commentText = "Test-3";
-const commentsPerMinute = 60; // تعليق كل ثانية
+const commentText = "N...";
 
-// ✅ غيّر هذه القيم لتفعيل/تعطيل الإرسال
+// ✳️ عدد التعليقات لكل أنمي قبل الانتقال للثاني
+const maxCommentsPerAnime = 60;
+
+// ✅ عدد التعليقات في الدقيقة
+const commentsPerMinute = 120;
+const delay = (60 / commentsPerMinute) * 1000;
+
+// ✴️ عدد الأنميات التي يتم الإرسال لها في نفس اللحظة
+const parallelAnimeCount = 2;
+
 const animeTargets = {
   532: true,
-  11708: false,
-  11547: false,
-  11707: false,
-  11723: false,
-  11706: false,
-  11673: false,
-  11704: false,
-  11703: false,
-  11702: false,
-  11700: false,
-  11705: false,
-  11699: false,
-  11698: false,
-  11694: false,
-  11697: false,
-  11721: false,
-  11718: false,
-  11693: false,
-  11692: false,
-  11663: false,
-  11710: false,
-  11711: false,
-  11691: false,
-  11689: false,
-  653: false,
-  11686: false,
-  11688: false,
-  11684: false,
-  11712: false
+  11708: true,
+  11547: true,
+  11707: true,
+  11723: true,
+  11706: true,
+  11673: true,
+  11704: true,
+  11703: true,
+  11702: true,
+  11700: true,
+  11705: true,
+  11699: true,
+  11698: true,
+  11694: true,
+  11697: true,
+  11721: true,
+  11718: true,
+  11693: true,
+  11692: true,
+  11663: true,
+  11710: true,
+  11711: true,
+  11691: true,
+  11689: true,
+  653: true,
+  11686: true,
+  11688: true,
+  11684: true,
+  11712: true,
 };
 
 const headers = {
-  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_8_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_8_3 like Mac OS X)",
   "Content-Type": "application/x-www-form-urlencoded",
   "Origin": "https://ios.sanime.net",
   "Referer": "https://ios.sanime.net/",
@@ -53,8 +63,9 @@ const headers = {
   "Accept-Language": "ar"
 };
 
-// تحسين الاتصال
 const agent = new https.Agent({ keepAlive: true });
+
+let botActive = true;
 
 function sendComment(animeId) {
   const itemData = {
@@ -76,32 +87,78 @@ function sendComment(animeId) {
   );
 }
 
-function startCommenting() {
-  const activeAnimeIds = Object.keys(animeTargets).filter(id => animeTargets[id]);
+async function sendCommentsToAnime(animeId) {
+  console.log(`🚀 بدء إرسال ${maxCommentsPerAnime} تعليق إلى الأنمي: ${animeId}`);
 
-  console.log("🚀 بدأ الإرسال إلى الأنميات:", activeAnimeIds);
+  for (let i = 1; i <= maxCommentsPerAnime; i++) {
+    if (!botActive) break;
 
-  let counter = 0;
+    try {
+      await sendComment(animeId);
+      console.log(`✅ [${animeId}] تعليق رقم ${i}`);
+    } catch (err) {
+      console.error(`❌ [${animeId}] خطأ:`, err.message);
+    }
 
-  setInterval(() => {
-    counter++;
-    activeAnimeIds.forEach(animeId => {
-      sendComment(animeId)
-        .then(() => console.log(`✅ [${animeId}] تعليق ${counter}`))
-        .catch(err => console.error(`❌ [${animeId}] خطأ:`, err.message));
-    });
-
-    if (counter >= commentsPerMinute) counter = 0;
-  }, 1000);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
 }
 
-startCommenting();
+async function startLoop() {
+  const activeAnimeIds = Object.keys(animeTargets).filter(id => animeTargets[id]);
+  let index = 0;
 
+  while (true) {
+    if (!botActive) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      continue;
+    }
 
-// 🟢 Express وهمي لـ Render
+    const batch = activeAnimeIds.slice(index, index + parallelAnimeCount);
+
+    if (batch.length === 0) {
+      index = 0;
+      continue;
+    }
+
+    console.log(`🔄 إرسال إلى ${batch.length} أنمي دفعة واحدة: ${batch.join(", ")}`);
+
+    await Promise.all(batch.map(id => sendCommentsToAnime(id)));
+
+    index += parallelAnimeCount;
+    if (index >= activeAnimeIds.length) {
+      index = 0;
+    }
+  }
+}
+
+startLoop();
+
+// 🟢 صفحة رئيسية
 app.get("/", (req, res) => {
   res.send("🤖 Bot is running...");
 });
+
+// 🔘 إيقاف مؤقت
+app.get("/stop", (req, res) => {
+  botActive = false;
+  res.send("🛑 Bot has been stopped.");
+});
+
+// 🔘 إعادة التشغيل
+app.get("/start", (req, res) => {
+  botActive = true;
+  res.send("✅ Bot has been started.");
+});
+
+// 🔁 إبقاء الخدمة حية
+const KEEP_ALIVE_URL = "https://auto-comment-bot-rrmb.onrender.com/";
+
+setInterval(() => {
+  fetch(KEEP_ALIVE_URL)
+    .then(() => console.log("🔁 Keep-alive ping sent"))
+    .catch(err => console.error("⚠️ Keep-alive ping failed:", err.message));
+}, 5 * 60 * 1000);
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
