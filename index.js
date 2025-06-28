@@ -13,11 +13,11 @@ const commentText = "N...";
 const maxCommentsPerAnime = 60;
 
 // ✅ عدد التعليقات في الدقيقة
-const commentsPerMinute = 480;
+const commentsPerMinute = 60;
 const delay = (60 / commentsPerMinute) * 1000;
 
 // ✴️ عدد الأنميات التي يتم الإرسال لها في نفس اللحظة
-const parallelAnimeCount = 2;
+const parallelAnimeCount = 4;
 
 const animeTargets = {
   532: true,
