@@ -7,20 +7,20 @@ const app = express();
 
 const email = "123456789xdf3@gmail.com";
 const password = "Gehrman3mk";
-const commentText = "N...";
+const commentText = "انمي حْرا ";
 
 // ✳️ عدد التعليقات لكل أنمي قبل الانتقال للثاني
-const maxCommentsPerAnime = 120;
+const maxCommentsPerAnime = 75;
 
 // ✅ عدد التعليقات في الدقيقة
 const commentsPerMinute = 60;
 const delay = (60 / commentsPerMinute) * 1000;
 
 // ✴️ عدد الأنميات التي يتم الإرسال لها في نفس اللحظة
-const parallelAnimeCount = 4;
+const parallelAnimeCount = 3;
 
 const animeTargets = {
-  532: false,
+  532: true,
   11708: true,
   11547: true,
   11707: true,
@@ -52,6 +52,8 @@ const animeTargets = {
   11712: true,
   11715: true,
   11658: true,
+  11725: true,
+  11726: true,
 };
 
 const headers = {
