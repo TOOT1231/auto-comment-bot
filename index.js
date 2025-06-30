@@ -17,7 +17,7 @@ const commentsPerMinute = 60;
 const delay = (60 / commentsPerMinute) * 1000;
 
 // ✴️ عدد الأنميات التي يتم الإرسال لها في نفس اللحظة
-const parallelAnimeCount = 5;
+const parallelAnimeCount = 3;
 
 const animeTargets = {
   532: true,
