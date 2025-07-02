@@ -17,8 +17,8 @@ const parallelAnimeCount = 3;
 // 📝 قائمة الأنميات مع الاسم وحالة التفعيل
 const animeTargets = {
   532:    { active: true, name: "One Piece" },
-  :  { active: false, name: "Ninja to Koroshiya no" },
-  :  { active: false, name: "Kimi to Boku no Saigo no" },
+  11729:  { active: true, name: "Necronomico no Cosmic Horror Show" },
+  11728:  { active: true, name: "Kanojo, Okarishimasu 4th Season" },
   :  { active: false, name: "Apocalypse Hotel" },
   :  { active: false, name: "Kidou Senshi Gundam" },
   :  { active: false, name: "Shiunji-ke no Kodomotachi" },
@@ -34,7 +34,7 @@ const animeTargets = {
   11697:  { active: true, name: "Witch Watch" },
   11721:  { active: true, name: "The All-devouring whale" },
   11718:  { active: false, name: "Ore wa Seikan Kokka no" },
-  :  { active: false, name: "Shoushimin Series 2nd" },
+  11724:  { active: true, name: "Takopii no Genzai" },
   :  { active: false, name: "Classic*Stars" },
   :  { active: false, name: "A-Rank Party wo" },
   11710:  { active: true, name: "Hibi wa Sugiredo Meshi" },
