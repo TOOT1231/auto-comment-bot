@@ -9,18 +9,18 @@ const email = "123456789xdf3@gmail.com";
 const password = "Gehrman3mk";
 const commentText = "انمي حْرا ";
 
-// ✳️ عدد التعليقات لكل أنمي قبل الانتقال للثاني
+//  عدد التعليقات لكل أنمي قبل الانتقال للثاني
 const maxCommentsPerAnime = 75;
 
-// ✅ عدد التعليقات في الدقيقة
+//  عدد التعليقات في الدقيقة
 const commentsPerMinute = 60;
 const delay = (60 / commentsPerMinute) * 1000;
 
-// ✴️ عدد الأنميات التي يتم الإرسال لها في نفس اللحظة
+//  عدد الأنميات التي يتم الإرسال لها في نفس اللحظة
 const parallelAnimeCount = 3;
 
 const animeTargets = {
-  532: true,
+  532: true,  //OnePiece
   11708: true,
   11547: true,
   11707: true,
@@ -45,7 +45,7 @@ const animeTargets = {
   11711: true,
   11691: true,
   11689: true,
-  653: true,
+  653: true, //Detective Conan
   11686: true,
   11688: true,
   11684: true,
