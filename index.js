@@ -9,7 +9,7 @@ const password = "Gehrman3mk";
 const commentText = ".... ";
 
 const animeTargets = {
-  532: true, 11708: true, 11547: true, 11707: true, 11723: true, 11706: true,
+  532: false, 11708: true, 11547: true, 11707: true, 11723: true, 11706: true,
   11673: true, 11704: true, 11703: true, 11702: true, 11700: true, 11705: true,
   11699: true, 11698: true, 11694: true, 11697: true, 11721: true, 11718: true,
   11693: true, 11692: true, 11663: true, 11710: true, 11711: true, 11691: true,
