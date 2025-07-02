@@ -10,7 +10,7 @@ const password = "Gehrman3mk";
 const commentText = "         ";
 
 // ✅ سرعة الإرسال: 60 تعليق بالدقيقة (1 كل ثانية)
-const delay = 1000;
+const delay = 4000;
 
 const animeTargets = {
   532: true, 11708: true, 11547: true, 11707: true, 11723: true, 11706: true,
