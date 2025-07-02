@@ -9,9 +9,11 @@ const email = "123456789xdf3@gmail.com";
 const password = "Gehrman3mk";
 const commentText = "    ";
 
+// ✅ سرعة الإرسال: 60 تعليق بالدقيقة = 1 تعليق كل ثانية لكل أنمي
+const delayPerAnime = 1000;
+
+// ✅ عدد التعليقات المراد إرسالها لكل أنمي
 const maxCommentsPerAnime = 60;
-const delay = 1000; // 60 تعليق/دقيقة
-const parallelAnimeCount = 3;
 
 const animeTargets = {
   532: true, 11708: true, 11547: true, 11707: true, 11723: true, 11706: true,
@@ -34,13 +36,12 @@ const headers = {
 };
 
 const agent = new https.Agent({ keepAlive: true });
-
 let botActive = true;
 let totalCommentsSent = 0;
-let animeProgress = {}; // عدد التعليقات المرسلة لكل أنمي
+const animeProgress = {}; // تتبع عدد التعليقات لكل أنمي
 
-// إرسال تعليق مع إعادة المحاولة
-async function sendCommentWithRetry(animeId, retries = 2) {
+// دالة إرسال تعليق
+async function sendComment(animeId) {
   const itemData = {
     post: commentText,
     id: animeId,
@@ -48,88 +49,64 @@ async function sendCommentWithRetry(animeId, retries = 2) {
   };
 
   const itemBase64 = Buffer.from(JSON.stringify(itemData)).toString("base64");
-  const payload = new URLSearchParams({ email, password, item: itemBase64 });
+  const payload = new URLSearchParams({
+    email,
+    password,
+    item: itemBase64
+  });
 
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      await axios.post(
-        "https://app.sanime.net/function/h10.php?page=addcmd",
-        payload.toString(),
-        {
-          headers,
-          httpsAgent: agent,
-          timeout: 8000
-        }
-      );
-      totalCommentsSent++;
-      animeProgress[animeId] = (animeProgress[animeId] || 0) + 1;
-      console.log(`✅ [${animeId}] تعليق رقم ${animeProgress[animeId]}`);
-      return;
-    } catch (err) {
-      if (attempt === retries) {
-        console.error(`❌ [${animeId}] فشل نهائي: ${err.message}`);
-      } else {
-        console.warn(`⚠️ [${animeId}] محاولة ${attempt} فشلت، إعادة المحاولة...`);
-        await new Promise(res => setTimeout(res, 500));
+  try {
+    await axios.post(
+      "https://app.sanime.net/function/h10.php?page=addcmd",
+      payload.toString(),
+      {
+        headers,
+        httpsAgent: agent,
+        timeout: 7000
       }
-    }
+    );
+    totalCommentsSent++;
+    animeProgress[animeId] = (animeProgress[animeId] || 0) + 1;
+    console.log(`✅ [${animeId}] تعليق رقم ${animeProgress[animeId]}`);
+  } catch (err) {
+    console.error(`❌ [${animeId}] خطأ: ${err.message}`);
   }
 }
 
-// إرسال لكل دفعة من الأنميات
-function startSendingLoop() {
+// توزيع إرسال التعليقات عبر الزمن
+function startSmartDispatcher() {
   const activeAnimeIds = Object.keys(animeTargets).filter(id => animeTargets[id]);
-  let index = 0;
 
-  setInterval(() => {
-    if (!botActive) return;
+  activeAnimeIds.forEach((animeId, index) => {
+    animeProgress[animeId] = 0;
 
-    const startTime = performance.now();
-
-    const batch = activeAnimeIds.slice(index, index + parallelAnimeCount);
-
-    batch.forEach(animeId => {
-      if ((animeProgress[animeId] || 0) < maxCommentsPerAnime) {
-        sendCommentWithRetry(animeId);
-      }
-    });
-
-    index += parallelAnimeCount;
-    if (index >= activeAnimeIds.length) {
-      index = 0;
-      // إعادة تعيين التعداد بعد كل دورة كاملة
-      for (const id of activeAnimeIds) animeProgress[id] = 0;
-    }
-
-    const duration = performance.now() - startTime;
-    if (duration > delay) {
-      console.warn(`⚠️ الإرسال استغرق ${duration.toFixed(2)}ms وهو أطول من المتوقع!`);
-    }
-
-  }, delay);
+    setTimeout(() => {
+      setInterval(() => {
+        if (!botActive) return;
+        if (animeProgress[animeId] >= maxCommentsPerAnime) return;
+        sendComment(animeId);
+      }, delayPerAnime);
+    }, index * (delayPerAnime / activeAnimeIds.length)); // توزيع الحمل
+  });
 }
 
-startSendingLoop();
-
-// 🟢 صفحة عرض الحالة
+// 🟢 حالة البوت
 app.get("/", (req, res) => {
-  const activeIds = Object.keys(animeTargets).filter(id => animeTargets[id]);
   res.send(`
     🤖 Bot is running...<br>
     📊 التعليقات المرسلة: ${totalCommentsSent}<br>
-    ⚙️ السرعة: ${Math.round(60_000 / delay)} تعليق/دقيقة<br>
-    🧩 عدد الأنميات الحالية في كل دفعة: ${parallelAnimeCount}<br>
-    📁 الأنميات الفعالة: ${activeIds.length}<br>
+    💡 سرعة: 60 تعليق/د لكل أنمي<br>
+    🧩 عدد الأنميات: ${Object.keys(animeTargets).length}
   `);
 });
 
-// 🔘 إيقاف البوت مؤقتًا
+// 🔘 إيقاف
 app.get("/stop", (req, res) => {
   botActive = false;
   res.send("🛑 تم إيقاف البوت مؤقتًا");
 });
 
-// 🔘 إعادة تشغيل البوت
+// 🔘 تشغيل
 app.get("/start", (req, res) => {
   botActive = true;
   res.send("✅ تم تشغيل البوت");
@@ -143,7 +120,10 @@ setInterval(() => {
     .catch(err => console.error("⚠️ Keep-alive ping failed:", err.message));
 }, 5 * 60 * 1000);
 
-// 🚪 بدء السيرفر
+// 🚀 بدء البوت
+startSmartDispatcher();
+
+// 🖥️ بدء السيرفر
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
