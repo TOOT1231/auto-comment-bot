@@ -1,59 +1,24 @@
-
 const axios = require("axios");
 const https = require("https");
 const express = require("express");
 const fetch = require("node-fetch");
+const { performance } = require("perf_hooks");
 const app = express();
 
 const email = "123456789xdf3@gmail.com";
 const password = "Gehrman3mk";
-const commentText = "انمي حْرا ";
+const commentText = "         ";
 
-//  عدد التعليقات لكل أنمي قبل الانتقال للثاني
-const maxCommentsPerAnime = 75;
-
-//  عدد التعليقات في الدقيقة
-const commentsPerMinute = 60;
-const delay = (60 / commentsPerMinute) * 1000;
-
-//  عدد الأنميات التي يتم الإرسال لها في نفس اللحظة
-const parallelAnimeCount = 3;
+// ✅ سرعة الإرسال: 60 تعليق بالدقيقة (1 كل ثانية)
+const delay = 0;
 
 const animeTargets = {
-  532: true,  //One Piece
-  11708: true,
-  11547: true,
-  11707: true,
-  11723: true,
-  11706: true,
-  11673: true,
-  11704: true,
-  11703: true,
-  11702: true,
-  11700: true,
-  11705: true,
-  11699: true,
-  11698: true,
-  11694: true,
-  11697: true,
-  11721: true,
-  11718: true,
-  11693: true,
-  11692: true,
-  11663: true,
-  11710: true,
-  11711: true,
-  11691: true,
-  11689: true,
-  653: true, //Detective Conan
-  11686: true,
-  11688: true,
-  11684: true,
-  11712: true,
-  11715: true,
-  11658: true,
-  11725: true,
-  11726: true,
+  532: true, 11708: true, 11547: true, 11707: true, 11723: true, 11706: true,
+  11673: true, 11704: true, 11703: true, 11702: true, 11700: true, 11705: true,
+  11699: true, 11698: true, 11694: true, 11697: true, 11721: true, 11718: true,
+  11693: true, 11692: true, 11663: true, 11710: true, 11711: true, 11691: true,
+  11689: true, 653: true, 11686: true, 11688: true, 11684: true, 11712: true,
+  11715: true, 11658: true, 11725: true, 11726: true,
 };
 
 const headers = {
@@ -70,13 +35,16 @@ const headers = {
 const agent = new https.Agent({ keepAlive: true });
 
 let botActive = true;
+let totalCommentsSent = 0;
 
-function sendComment(animeId) {
+// إرسال تعليق مع إعادة المحاولة
+async function sendCommentWithRetry(animeId, retries = 2) {
   const itemData = {
     post: commentText,
     id: animeId,
     fire: false
   };
+
   const itemBase64 = Buffer.from(JSON.stringify(itemData)).toString("base64");
   const payload = new URLSearchParams({
     email,
@@ -84,86 +52,86 @@ function sendComment(animeId) {
     item: itemBase64
   });
 
-  return axios.post(
-    "https://app.sanime.net/function/h10.php?page=addcmd",
-    payload.toString(),
-    { headers, httpsAgent: agent }
-  );
-}
-
-async function sendCommentsToAnime(animeId) {
-  console.log(`🚀 بدء إرسال ${maxCommentsPerAnime} تعليق إلى الأنمي: ${animeId}`);
-
-  for (let i = 1; i <= maxCommentsPerAnime; i++) {
-    if (!botActive) break;
-
+  for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      await sendComment(animeId);
-      console.log(`✅ [${animeId}] تعليق رقم ${i}`);
+      await axios.post(
+        "https://app.sanime.net/function/h10.php?page=addcmd",
+        payload.toString(),
+        {
+          headers,
+          httpsAgent: agent,
+          timeout: 8000
+        }
+      );
+      totalCommentsSent++;
+      console.log(`✅ [${animeId}] تعليق تم بنجاح`);
+      return true;
     } catch (err) {
-      console.error(`❌ [${animeId}] خطأ:`, err.message);
+      if (attempt === retries) {
+        console.error(`❌ [${animeId}] فشل نهائي: ${err.message}`);
+      } else {
+        console.warn(`⚠️ [${animeId}] إعادة محاولة ${attempt}`);
+        await new Promise(res => setTimeout(res, 1000));
+      }
     }
-
-    await new Promise(resolve => setTimeout(resolve, delay));
   }
+
+  return false;
 }
 
-async function startLoop() {
+// بدء الإرسال المتزامن لكل الأنميات
+function startSendingToAllAnimes() {
   const activeAnimeIds = Object.keys(animeTargets).filter(id => animeTargets[id]);
-  let index = 0;
 
-  while (true) {
-    if (!botActive) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      continue;
+  setInterval(() => {
+    if (!botActive) return;
+
+    const start = performance.now();
+
+    activeAnimeIds.forEach(animeId => {
+      sendCommentWithRetry(animeId);
+    });
+
+    const duration = performance.now() - start;
+    if (duration > delay) {
+      console.warn(`⚠️ الإرسال استغرق ${duration.toFixed(2)}ms وهو أطول من المتوقع!`);
     }
-
-    const batch = activeAnimeIds.slice(index, index + parallelAnimeCount);
-
-    if (batch.length === 0) {
-      index = 0;
-      continue;
-    }
-
-    console.log(`🔄 إرسال إلى ${batch.length} أنمي دفعة واحدة: ${batch.join(", ")}`);
-
-    await Promise.all(batch.map(id => sendCommentsToAnime(id)));
-
-    index += parallelAnimeCount;
-    if (index >= activeAnimeIds.length) {
-      index = 0;
-    }
-  }
+  }, delay);
 }
 
-startLoop();
+startSendingToAllAnimes();
 
-// 🟢 صفحة رئيسية
+// 🟢 صفحة عرض الحالة
 app.get("/", (req, res) => {
-  res.send("🤖 Bot is running...");
+  res.send(`
+    🤖 Bot is running...<br>
+    📊 إجمالي التعليقات المرسلة: ${totalCommentsSent}<br>
+    ⚙️ سرعة الإرسال: 60 تعليق/دقيقة إلى كل أنمي<br>
+    🧩 عدد الأنميات: ${Object.keys(animeTargets).filter(id => animeTargets[id]).length}
+  `);
 });
 
-// 🔘 إيقاف مؤقت
+// 🔘 إيقاف البوت مؤقتًا
 app.get("/stop", (req, res) => {
   botActive = false;
-  res.send("🛑 Bot has been stopped.");
+  res.send("🛑 تم إيقاف البوت مؤقتًا");
 });
 
-// 🔘 إعادة التشغيل
+// 🔘 إعادة تشغيل البوت
 app.get("/start", (req, res) => {
   botActive = true;
-  res.send("✅ Bot has been started.");
+  res.send("✅ تم تشغيل البوت");
 });
 
 // 🔁 إبقاء الخدمة حية
 const KEEP_ALIVE_URL = "https://auto-comment-bot-rrmb.onrender.com/";
-
 setInterval(() => {
   fetch(KEEP_ALIVE_URL)
     .then(() => console.log("🔁 Keep-alive ping sent"))
     .catch(err => console.error("⚠️ Keep-alive ping failed:", err.message));
 }, 5 * 60 * 1000);
 
+// 🚪 بدء السيرفر
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
