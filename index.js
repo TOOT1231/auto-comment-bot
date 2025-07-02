@@ -7,10 +7,11 @@ const app = express();
 
 const email = "123456789xdf3@gmail.com";
 const password = "Gehrman3mk";
-const commentText = "         ";
+const commentText = "    ";
 
-// ✅ سرعة الإرسال: 60 تعليق بالدقيقة (1 كل ثانية)
-const delay = 4000;
+const maxCommentsPerAnime = 60;
+const delay = 1000; // 60 تعليق/دقيقة
+const parallelAnimeCount = 3;
 
 const animeTargets = {
   532: true, 11708: true, 11547: true, 11707: true, 11723: true, 11706: true,
@@ -36,6 +37,7 @@ const agent = new https.Agent({ keepAlive: true });
 
 let botActive = true;
 let totalCommentsSent = 0;
+let animeProgress = {}; // عدد التعليقات المرسلة لكل أنمي
 
 // إرسال تعليق مع إعادة المحاولة
 async function sendCommentWithRetry(animeId, retries = 2) {
@@ -46,11 +48,7 @@ async function sendCommentWithRetry(animeId, retries = 2) {
   };
 
   const itemBase64 = Buffer.from(JSON.stringify(itemData)).toString("base64");
-  const payload = new URLSearchParams({
-    email,
-    password,
-    item: itemBase64
-  });
+  const payload = new URLSearchParams({ email, password, item: itemBase64 });
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -64,50 +62,64 @@ async function sendCommentWithRetry(animeId, retries = 2) {
         }
       );
       totalCommentsSent++;
-      console.log(`✅ [${animeId}] تعليق تم بنجاح`);
-      return true;
+      animeProgress[animeId] = (animeProgress[animeId] || 0) + 1;
+      console.log(`✅ [${animeId}] تعليق رقم ${animeProgress[animeId]}`);
+      return;
     } catch (err) {
       if (attempt === retries) {
         console.error(`❌ [${animeId}] فشل نهائي: ${err.message}`);
       } else {
-        console.warn(`⚠️ [${animeId}] إعادة محاولة ${attempt}`);
-        await new Promise(res => setTimeout(res, 1000));
+        console.warn(`⚠️ [${animeId}] محاولة ${attempt} فشلت، إعادة المحاولة...`);
+        await new Promise(res => setTimeout(res, 500));
       }
     }
   }
-
-  return false;
 }
 
-// بدء الإرسال المتزامن لكل الأنميات
-function startSendingToAllAnimes() {
+// إرسال لكل دفعة من الأنميات
+function startSendingLoop() {
   const activeAnimeIds = Object.keys(animeTargets).filter(id => animeTargets[id]);
+  let index = 0;
 
   setInterval(() => {
     if (!botActive) return;
 
-    const start = performance.now();
+    const startTime = performance.now();
 
-    activeAnimeIds.forEach(animeId => {
-      sendCommentWithRetry(animeId);
+    const batch = activeAnimeIds.slice(index, index + parallelAnimeCount);
+
+    batch.forEach(animeId => {
+      if ((animeProgress[animeId] || 0) < maxCommentsPerAnime) {
+        sendCommentWithRetry(animeId);
+      }
     });
 
-    const duration = performance.now() - start;
+    index += parallelAnimeCount;
+    if (index >= activeAnimeIds.length) {
+      index = 0;
+      // إعادة تعيين التعداد بعد كل دورة كاملة
+      for (const id of activeAnimeIds) animeProgress[id] = 0;
+    }
+
+    const duration = performance.now() - startTime;
     if (duration > delay) {
       console.warn(`⚠️ الإرسال استغرق ${duration.toFixed(2)}ms وهو أطول من المتوقع!`);
     }
+
   }, delay);
 }
 
-startSendingToAllAnimes();
+startSendingLoop();
 
 // 🟢 صفحة عرض الحالة
 app.get("/", (req, res) => {
+  const activeIds = Object.keys(animeTargets).filter(id => animeTargets[id]);
   res.send(`
     🤖 Bot is running...<br>
-    📊 إجمالي التعليقات المرسلة: ${totalCommentsSent}<br>
-    ⚙️ سرعة الإرسال: 60 تعليق/دقيقة إلى كل أنمي<br>
-    🧩 عدد الأنميات: ${Object.keys(animeTargets).filter(id => animeTargets[id]).length}
+    📊 التعليقات المرسلة: ${totalCommentsSent}<br>
+    ⚙️ السرعة: ${Math.round(60_000 / delay)} تعليق/دقيقة<br>
+    🧩 عدد الأنميات الحالية في كل دفعة: ${parallelAnimeCount}<br>
+    📁 الأنميات الفعالة: ${activeIds.length}<br>
   `);
 });
 
