@@ -7,13 +7,10 @@ const app = express();
 
 const email = "123456789xdf3@gmail.com";
 const password = "Gehrman3mk";
-const commentText = "    ";
+const commentText = ".... ";
 
-// ✅ سرعة الإرسال: 60 تعليق بالدقيقة = 1 تعليق كل ثانية لكل أنمي
-const delayPerAnime = 1000;
-
-// ✅ عدد التعليقات المراد إرسالها لكل أنمي
-const maxCommentsPerAnime = 60;
+// السرعة: 60 تعليق/دقيقة = 1 تعليق كل 1000ms
+const delay = 1000;
 
 const animeTargets = {
   532: true, 11708: true, 11547: true, 11707: true, 11723: true, 11706: true,
@@ -36,12 +33,12 @@ const headers = {
 };
 
 const agent = new https.Agent({ keepAlive: true });
+
 let botActive = true;
 let totalCommentsSent = 0;
-const animeProgress = {}; // تتبع عدد التعليقات لكل أنمي
 
-// دالة إرسال تعليق
-async function sendComment(animeId) {
+// إرسال تعليق مع إعادة المحاولة
+async function sendCommentWithRetry(animeId, retries = 2) {
   const itemData = {
     post: commentText,
     id: animeId,
@@ -55,58 +52,77 @@ async function sendComment(animeId) {
     item: itemBase64
   });
 
-  try {
-    await axios.post(
-      "https://app.sanime.net/function/h10.php?page=addcmd",
-      payload.toString(),
-      {
-        headers,
-        httpsAgent: agent,
-        timeout: 7000
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await axios.post(
+        "https://app.sanime.net/function/h10.php?page=addcmd",
+        payload.toString(),
+        {
+          headers,
+          httpsAgent: agent,
+          timeout: 7000
+        }
+      );
+      totalCommentsSent++;
+      console.log(`✅ [${animeId}] تعليق تم بنجاح`);
+      return true;
+    } catch (err) {
+      if (attempt === retries) {
+        console.error(`❌ [${animeId}] فشل نهائي: ${err.message}`);
+      } else {
+        console.warn(`⚠️ [${animeId}] إعادة محاولة ${attempt}`);
+        await new Promise(res => setTimeout(res, 1000));
       }
-    );
-    totalCommentsSent++;
-    animeProgress[animeId] = (animeProgress[animeId] || 0) + 1;
-    console.log(`✅ [${animeId}] تعليق رقم ${animeProgress[animeId]}`);
-  } catch (err) {
-    console.error(`❌ [${animeId}] خطأ: ${err.message}`);
+    }
   }
+
+  return false;
 }
 
-// توزيع إرسال التعليقات عبر الزمن
-function startSmartDispatcher() {
+// بدء الإرسال المتدرج لكل الأنميات
+function startDistributedSending() {
   const activeAnimeIds = Object.keys(animeTargets).filter(id => animeTargets[id]);
+  const animeCount = activeAnimeIds.length;
 
+  if (animeCount === 0) {
+    console.log("⚠️ لا توجد أنميات مفعّلة.");
+    return;
+  }
+
+  // لكل أنمي، نحسب offset خاص به بناءً على ترتيبه
   activeAnimeIds.forEach((animeId, index) => {
-    animeProgress[animeId] = 0;
+    const offset = Math.floor((delay / animeCount) * index); // تأخير بسيط لكل أنمي
 
     setTimeout(() => {
       setInterval(() => {
         if (!botActive) return;
-        if (animeProgress[animeId] >= maxCommentsPerAnime) return;
-        sendComment(animeId);
-      }, delayPerAnime);
-    }, index * (delayPerAnime / activeAnimeIds.length)); // توزيع الحمل
+        sendCommentWithRetry(animeId);
+      }, delay);
+    }, offset);
   });
+
+  console.log(`🚀 بدأ الإرسال الذكي إلى ${animeCount} أنمي مع توزيع الحمل`);
 }
 
-// 🟢 حالة البوت
+startDistributedSending();
+
+// 🟢 صفحة الحالة
 app.get("/", (req, res) => {
   res.send(`
     🤖 Bot is running...<br>
-    📊 التعليقات المرسلة: ${totalCommentsSent}<br>
-    💡 سرعة: 60 تعليق/د لكل أنمي<br>
-    🧩 عدد الأنميات: ${Object.keys(animeTargets).length}
+    📊 إجمالي التعليقات المرسلة: ${totalCommentsSent}<br>
+    ⚙️ السرعة: 60 تعليق/دقيقة لكل أنمي<br>
+    🧩 عدد الأنميات المفعّلة: ${Object.keys(animeTargets).filter(id => animeTargets[id]).length}
   `);
 });
 
-// 🔘 إيقاف
+// 🔘 إيقاف مؤقت
 app.get("/stop", (req, res) => {
   botActive = false;
   res.send("🛑 تم إيقاف البوت مؤقتًا");
 });
 
-// 🔘 تشغيل
+// 🔘 إعادة التشغيل
 app.get("/start", (req, res) => {
   botActive = true;
   res.send("✅ تم تشغيل البوت");
@@ -120,10 +136,7 @@ setInterval(() => {
     .catch(err => console.error("⚠️ Keep-alive ping failed:", err.message));
 }, 5 * 60 * 1000);
 
-// 🚀 بدء البوت
-startSmartDispatcher();
-
-// 🖥️ بدء السيرفر
+// 🚪 بدء السيرفر
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
